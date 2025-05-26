@@ -149,25 +149,3 @@ class Account:
         self.is_frozen = False
         
 
-    #Account Statement: Method to generate a statement of all transactions in an account. (Print using a for loop).
-  
-# from account import Account
-# x = Account("Alice")
-# y = Account("Mark")
-# x.withdraw(50)
-'''
-x.deposit
-x.deposit(500)
-600
-x.deposit(4000)
-4600
-x.account_balance
-4600
- x.withdraw(700)
-3900
- x.transfer(500,y)
-3400
-y.account_balance
-500
-
-'''
