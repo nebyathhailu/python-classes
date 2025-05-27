@@ -70,11 +70,12 @@ class Account:
             return "Transfer failed: your account is frozen."
         
     #Get loan
-    def loan(self,amount):
+    def get_loan(self,amount):
         if amount > 0:
-            max_loan = 0.3 * self.account_balance 
+            max_loan = 3 * self.account_balance 
             if amount <= max_loan:
                 self.loans.append(amount)
+                self.deposits.append(amount)
                 self.loan_balance = self.get_balance(self.loans) - self.get_balance(self.paid_loans)
                 return self.loan_balance
             else:
@@ -86,7 +87,8 @@ class Account:
     def repay_loan(self, amount):
         if amount > 0:
             if self.loan_balance != 0:
-                self.repay_loans.append(amount)
+                self.withdraw(self,amount)
+                self.paid_loans.append(amount)
                 self.loan_balance = self.get_balance(self.loans) - self.get_balance(self.paid_loans)
                 return self.loan_balance
             else:
