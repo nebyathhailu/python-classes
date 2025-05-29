@@ -10,7 +10,7 @@ class Account:
         self.loan_balance = 0
         self.is_frozen = False
 
-    #Get balance
+    #Calculate total balance
     def get_balance(self, balance):
         total = 0
         for i in balance:
@@ -58,7 +58,7 @@ class Account:
             if amount > 0:
                 if amount <= self.account_balance - self.set_min_balance():
                     self.transfers.append(amount)
-                    account.deposits.append(amount)
+                    account.deposit(amount)
                     self.account_balance = self.get_balance(self.deposits) - self.get_balance(self.withdraws) - self.get_balance(self.transfers)
                     account.account_balance = account.get_balance(account.deposits) - account.get_balance(account.withdraws)
                     return self.account_balance
@@ -75,7 +75,7 @@ class Account:
             max_loan = 3 * self.account_balance 
             if amount <= max_loan:
                 self.loans.append(amount)
-                self.deposits.append(amount)
+                self.deposit(amount)
                 self.loan_balance = self.get_balance(self.loans) - self.get_balance(self.paid_loans)
                 return self.loan_balance
             else:
@@ -87,7 +87,7 @@ class Account:
     def repay_loan(self, amount):
         if amount > 0:
             if self.loan_balance != 0:
-                self.withdraw(self,amount)
+                self.withdraw(amount)
                 self.paid_loans.append(amount)
                 self.loan_balance = self.get_balance(self.loans) - self.get_balance(self.paid_loans)
                 return self.loan_balance
