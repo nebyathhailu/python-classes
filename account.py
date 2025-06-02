@@ -1,153 +1,106 @@
+from datetime import datetime
+
+class Transaction:
+    def __init__(self, amount, transaction_type, narration):
+        self.date = datetime.now()
+        self.amount = amount
+        self.transaction_type = transaction_type
+        self.narration = narration
+
+    def __repr__(self):
+        return f"{self.date} | {self.transaction_type} | {self.amount} | {self.narration}"
+    
 class Account:
     def __init__(self, name):
         self.name = name
-        self.account_balance = 0
-        self.deposits = []
-        self.withdraws = []
-        self.transfers = []
-        self.loans = []
-        self.paid_loans = []
-        self.loan_balance = 0
+        self.__account_balance = 0
+        self.__loan_balance = 0
         self.is_frozen = False
+        self.transactions = []
+        self.loan_transactions = []
+        self.min_balance = 100
 
-    #Calculate total balance
-    def get_balance(self, balance):
-        total = 0
-        for i in balance:
-            total+=i
-        return total
-
-    #Set minimum Balance
-    def set_min_balance(self):
-        min_balance = 100
-        return min_balance
     
-    #Deposit
+    def __add_transaction(self, amount, transaction_type, narration=""):
+        transaction = Transaction(amount, transaction_type, narration)
+        self.transactions.append(transaction)
+
+    def get_balance(self):
+        for transaction in self.transactions:
+            if transaction.transaction_type in ["Deposit", "Loan Received", "Transfer In"]:
+                self.__account_balance += transaction.amount
+            elif transaction.transaction_type in ["Withdraw", "Transfer Out", "Loan Repayment"]:
+                self.__account_balance -= transaction.amount
+        return f"Your balance is {self.__account_balance}."
+    
     def deposit(self, amount):
-        if self.is_frozen == False:
-            if amount > 0:
-                self.deposits.append(amount)
-                self.account_balance = self.get_balance(self.deposits) - self.get_balance(self.withdraws) - self.get_balance(self.transfers)
-                return self.account_balance
-            else:
-                return "Deposit can't be negative."
-        else:
+        if self.is_frozen:
             return "Deposit failed: your account is frozen."
-
-    #Withdraw
+        if amount <= 0:
+            return "Deposit must be positive."
+        self.__add_transaction(amount, "Deposit")
+        return self.get_balance()
+    
     def withdraw(self, amount):
-        if self.is_frozen == False:
-            if amount > 0:
-                if amount < self.account_balance:
-                    if amount <= self.account_balance - self.set_min_balance():
-                        self.withdraws.append(amount)
-                        self.account_balance = self.get_balance(self.deposits) - self.get_balance(self.withdraws) - self.get_balance(self.transfers)
-                        return self.account_balance
-                    else:
-                        return f"Withdrawal failed: you must keep at least {self.set_min_balance()} in your account."
-                else:
-                    return "Insufficient balance"
-            else:
-                return "Enter positive amount."
+        if self.is_frozen:
+            return "Withdrawal failed: your account is frozen."
+        if amount <= 0:
+            return "Enter a positive amount."
+        if self.__account_balance - amount < self.min_balance:
+            return f"Withdrawal failed: must maintain at least {self.min_balance} balance."
+        self.__add_transaction(amount, "Withdraw")
+        return self.get_balance()
+    
+    def transfer(self, amount, target_account):
+        if self.is_frozen:
+            return "Withdrawal failed: your account is frozen."
+        if amount <= 0:
+            return "Enter a positive amount."
+        if self.__account_balance - amount < self.min_balance:
+            return f"Transfer failed: must maintain at least {self.min_balance} balance."
+        if isinstance(target_account, Account):
+            self.__add_transaction(amount, "Transfer Out", f"To {target_account.name}")
+            target_account.__add_transaction(amount, "Transfer In" , "From {self.name}")
+            return self.get_balance()
         else:
-            return "Withdrawal fail: your account is frozen."
+            return "Target account doesn't exist."
         
-    #Transfer
-    def transfer(self, amount, account):
-        if self.is_frozen == False:
-            if amount > 0:
-                if amount <= self.account_balance - self.set_min_balance():
-                    self.transfers.append(amount)
-                    account.deposit(amount)
-                    self.account_balance = self.get_balance(self.deposits) - self.get_balance(self.withdraws) - self.get_balance(self.transfers)
-                    account.account_balance = account.get_balance(account.deposits) - account.get_balance(account.withdraws)
-                    return self.account_balance
-                else:
-                    return f"Transfer failed: you must keep at least {self.set_min_balance()} in your account."
-            else:
-                return "Can't transfer negative amount."
-        else:
-            return "Transfer failed: your account is frozen."
-        
-    #Get loan
-    def get_loan(self,amount):
-        if amount > 0:
-            max_loan = 3 * self.account_balance 
-            if amount <= max_loan:
-                self.loans.append(amount)
-                self.deposit(amount)
-                self.loan_balance = self.get_balance(self.loans) - self.get_balance(self.paid_loans)
-                return self.loan_balance
-            else:
-                return f"You can't get a loan greater than {max_loan}."
-        else:
-            return "Loan amount can't be negative."
-        
-    #Repay loan
+    def get_loan(self, amount):
+        if self.is_frozen:
+            return "Loan request failed: your account is frozen."
+        if amount <= 0:
+            return "Loan amount must be positive."
+        max_loan = 3 * self.__account_balance
+        if amount > max_loan:
+            return f"Loan request exceeds limit of {max_loan}."
+        self.__add_transaction(amount, "Loan Received")
+        self.__loan_transactions.append(Transaction(amount, "Loan Received"))
+        self.__loan_balance += amount
+        return f"Loan approved. Your new balance is {self.get_balance()}."
+    
     def repay_loan(self, amount):
-        if amount > 0:
-            if self.loan_balance != 0:
-                self.withdraw(amount)
-                self.paid_loans.append(amount)
-                self.loan_balance = self.get_balance(self.loans) - self.get_balance(self.paid_loans)
-                return self.loan_balance
-            else:
-                return "You don't have any loans."
-        else:
-            return "Amount can't be negative."
-
-    #Show balance  
-    def show_balance(self):
-        return f"Your balance is {self.account_balance}"
+        if amount <= 0:
+            return "Enter a positive amount."
+        if self.__loan_balance == 0:
+            return "No outstanding loan to repay."
+        if self.__account_balance - amount < self.min_balance:
+            return "Loan repayment failed: must maintain {self.min_balance} in account."
+        self.__add_transaction(amount, "Loan Repayment")
+        self.__loan_transactions.append(Transaction(amount, "Loan Repayment"))
+        self.__loan_balance -= amount
+        return f"Loan repaid. Remaining loan balance: {self.__loan_balance}"
     
-    #Account Statement
-    def get_statement(self):
-        statements =[{"type":"Deposit", "amount":self.get_balance(self.deposits)},
-                    {"type":"Transfer", "amount":self.get_balance(self.transfers)},
-                    {"type":"Withdraw", "amount":self.get_balance(self.withdraws)},
-                    {"type":"Account balance", "amount":self.account_balance}]
-        for statement in statements:
-            return f"{statement["type"]}: {statement["amount"]}"
-
-    #Get loan statement
+    def get_loan_balance(self):
+        for loan in self.loan_transactions:
+            if loan.transaction_type == "Loan Received":
+                self.__loan_balance += loan.amount
+            elif loan.transaction_type ==  "Loan Repayment":
+                self.__loan_balance -= loan.amount
+        return f"You loan balance is {self.__loan_balance}."
+    
     def get_loan_statement(self):
-        statements = [{"type":"Loan taken", "amount":self.get_balance(self.loans)},
-                      {"type":"Paid loan", "amount":self.paid_loans},
-                      {"type":"Unpaid loan", "amount":self.loan_balance}]
-        for statement in statements:
-            return f"{statement["type"]}: {statement["amount"]}"
-        
-    #Change account owner
-    def change_owner(self, new_name):
-        self.name = new_name
-        return self.name
-        
-    #Interest calculation - compound interest n--> number of compounding per year , time in years
-    def interest(self, time):
-        rate = 0.05
-        n = 12   #monthly
-        interest = self.account_balance * (1 + rate/n) ** (n * time) - self.account_balance
-        self.account_balance = "{:.2f}".format(self.account_balance * (1 + rate/n) ** (n * time))
-        return f"Your interest for {time} year is {interest:.2f}."
+        return [str(txn) for txn in self.transactions]
     
-    #Account details
-    def account_details(self):
-        owner = {"name":self.name , "balance":self.account_balance}
-        return owner
+    def show_balance(self):
+        return f"Current balance: {self.get_balance()}"
     
-    #Close account
-    def close_account(self):
-        self.balance = 0
-        self.deposits.clear()
-        self.withdraws.clear()
-        self.transfers.clear()
-
-    #Freeze account
-    def freeze_account(self):
-        self.is_frozen = True
-
-    #Unfreeze account
-    def unfreeze_account(self):
-        self.is_frozen = False
-        
-
