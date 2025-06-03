@@ -65,6 +65,12 @@ class Account:
         else:
             return "Target account doesn't exist."
         
+    def interest(self, time, rate=0.05):
+        n = 12  # Monthly
+        interest = self.__account_balance * ((1 + rate / n) ** (n * time) - 1)
+        self.__account_balance = self.__account_balance + interest
+        return f"Interest for {time} year(s): {interest:.2f}\nYour current balance is {self.__account_balance}"
+        
     def get_loan(self, amount):
         if self.is_frozen:
             return "Loan request failed: your account is frozen."
@@ -104,3 +110,27 @@ class Account:
     def show_balance(self):
         return f"Current balance: {self.get_balance()}"
     
+    def freeze_account(self):
+        self.__is_frozen = True
+        return "Account has been frozen."
+    
+    def unfreeze_account(self):
+        self.__is_frozen = False
+        return "Account has been unfrozen."
+    
+    def change_owner(self, new_name):
+        self.name = new_name
+        return f"Account name changed to {new_name}."
+    
+    def account_details(self):
+        return {
+            "Owner": self.name,
+            "Balance": self.get_balance(),
+            "Frozen": self.__is_frozen
+        }
+    
+    def close_account(self):
+        self.transactions.clear()
+        self.__loan_transactions.clear()
+        self.__loan_balance = 0
+        return "Account closed."
